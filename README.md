@@ -16,7 +16,7 @@ SafeSec is an open-source security camera system built for local ownership:
 - Local alerts, retention, encryption boundaries, and authenticated device primitives
 - Docker packaging for a Linux edge device
 
-The default detector allow-list deliberately excludes irrelevant classes such as umbrellas and hot dogs. See the staged roadmap in [PLAN.md](PLAN.md).
+The default detector allow-list deliberately excludes irrelevant classes such as umbrellas and hot dogs.
 
 ## Quick Start
 
