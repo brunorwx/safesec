@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" role="img" aria-labelledby="title desc">
+  <title id="title">SafeSec local security camera system</title>
+  <desc id="desc">SafeSec wordmark over a quiet camera control-room pattern.</desc>
+  <rect width="1600" height="420" fill="#17251f"/>
+  <path d="M0 330C260 220 410 380 680 282S1130 100 1600 220V420H0Z" fill="#214638"/>
+  <path d="M0 360C280 272 510 420 820 310s480-100 780 12V420H0Z" fill="#c95f3c" opacity=".88"/>
+  <g fill="none" stroke="#d8eadf" stroke-width="3" opacity=".3">
+    <path d="M1060 70h360v220h-360z"/>
+    <path d="M1100 110h280v140h-280z"/>
+    <circle cx="1240" cy="180" r="48"/>
+    <path d="M1240 132v96M1192 180h96"/>
+  </g>
+  <text x="110" y="190" fill="#f5fbf7" font-family="Trebuchet MS,Arial,sans-serif" font-size="92" font-weight="700" letter-spacing="8">SAFESEC</text>
+  <text x="116" y="246" fill="#b9d4c4" font-family="Arial,sans-serif" font-size="24" letter-spacing="5">LOCAL SECURITY CAMERA SYSTEM</text>
+</svg>

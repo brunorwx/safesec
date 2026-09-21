@@ -1,0 +1,28 @@
+services:
+  safesec-local:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+    devices:
+      - /dev/video0:/dev/video0
+    ports:
+      - "8765:8765"
+    volumes:
+      - safesec-recordings:/app/recordings
+      - safesec-models:/app/models
+    command:
+      - "--camera"
+      - "0"
+      - "--dashboard"
+      - "--dashboard-host"
+      - "0.0.0.0"
+      - "--record"
+      - "--recordings"
+      - "/app/recordings"
+      - "--weights"
+      - "/app/models/yolo11n.pt"
+    restart: unless-stopped
+
+volumes:
+  safesec-recordings:
+  safesec-models:

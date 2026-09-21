@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.py[cod]
+.coverage
+htmlcov/
+samples/
+
+# Local runtime artifacts
+recordings/
+models/
+*.onnx
+*.pt
+*.engine
+.env

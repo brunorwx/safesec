@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SafeSec Control Room</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #17251f;
+            --muted: #718078;
+            --line: #d8e1db;
+            --paper: #edf3ef;
+            --panel: #ffffff;
+            --accent: #c95f3c;
+            --accent-soft: #fff0e9;
+            --green: #16805b;
+            --green-soft: #e6f5ee;
+            --shadow: 0 14px 34px rgba(38, 69, 55, .08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: radial-gradient(circle at 10% 0%, #f9fcfa 0, transparent 28rem), var(--paper);
+            color: var(--ink);
+            font: 15px/1.5 "Avenir Next", "Trebuchet MS", sans-serif;
+        }
+
+        main {
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 34px 30px 64px;
+        }
+
+        header {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 24px;
+            padding-bottom: 28px;
+        }
+
+        h1 {
+            margin: 0;
+            font: 700 3.5rem/.95 "Trebuchet MS", sans-serif;
+            letter-spacing: 0;
+        }
+
+        .kicker {
+            color: var(--accent);
+            font: 700 12px/1 "Trebuchet MS", sans-serif;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .status {
+            display: flex;
+            gap: 9px;
+            align-items: center;
+            background: var(--green-soft);
+            border: 1px solid #c7e8d8;
+            border-radius: 999px;
+            color: var(--green);
+            font: 700 12px "Trebuchet MS", sans-serif;
+            padding: 8px 12px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 0 0 18px;
+        }
+
+        .metric,
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .metric {
+            padding: 18px 20px;
+        }
+
+        .metric strong {
+            display: block;
+            margin-top: 4px;
+            font: 700 2.25rem/1 "Trebuchet MS", sans-serif;
+        }
+
+        .label {
+            color: var(--muted);
+            font: 700 11px "Trebuchet MS", sans-serif;
+            letter-spacing: .09em;
+            text-transform: uppercase;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: .9fr 1.1fr;
+            gap: 18px;
+        }
+
+        .panel {
+            padding: 24px;
+            min-height: 220px;
+        }
+
+        .feed-panel {
+            padding: 0;
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 22px 24px 17px;
+        }
+
+        .feed-header h2 {
+            margin: 0;
+        }
+
+        .live-feed {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #17251f;
+            object-fit: contain;
+        }
+
+        .feed-note {
+            color: var(--muted);
+            padding: 12px 24px 18px;
+            margin: 0;
+            font-size: 13px;
+        }
+
+        .event-list button {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            gap: 16px;
+            border: 0;
+            border-top: 1px solid var(--line);
+            background: transparent;
+            color: var(--ink);
+            cursor: pointer;
+            font: inherit;
+            padding: 14px 0;
+            text-align: left;
+        }
+
+        .event-list button:hover {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .review-image {
+            display: none;
+            width: 100%;
+            margin-top: 14px;
+            border-radius: 4px;
+            border: 1px solid var(--line);
+        }
+
+        h2 {
+            margin: 0 0 18px;
+            font: 700 1.15rem "Trebuchet MS", sans-serif;
+        }
+
+        .empty {
+            color: var(--muted);
+            margin: 28px 0 0;
+            font-size: 13px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 0;
+            border-top: 1px solid var(--line);
+        }
+
+        .confidence {
+            background: var(--accent-soft);
+            border-radius: 999px;
+            color: var(--accent);
+            font: 700 12px "Trebuchet MS", sans-serif;
+            padding: 3px 8px;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 700px) {
+            main {
+                padding: 24px 16px 48px;
+            }
+
+            header {
+                display: block;
+            }
+
+            .status {
+                margin-top: 18px;
+            }
+
+            h1 {
+                font-size: 2.6rem;
+            }
+
+            .metrics,
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <header>
+            <div>
+                <div class="kicker">Local security system</div>
+                <h1>Control room</h1>
+            </div>
+            <div class="status"><span class="dot" id="status-dot"></span><span id="status-text">Connecting</span></div>
+        </header>
+        <section class="metrics" aria-label="System metrics">
+            <div class="metric"><span class="label">Cameras</span><strong id="camera-count">—</strong></div>
+            <div class="metric"><span class="label">Live tracks</span><strong id="track-count">—</strong></div>
+            <div class="metric"><span class="label">Recent alerts</span><strong id="alert-count">—</strong></div>
+        </section>
+        <section class="panel feed-panel">
+            <div class="feed-header">
+                <h2>Live camera</h2>
+                <span class="label">MJPEG stream</span>
+            </div>
+            <img class="live-feed" src="/video.mjpg" alt="Live camera feed">
+            <p class="feed-note" id="feed-note">Waiting for the camera pipeline.</p>
+        </section>
+        <section class="grid">
+            <article class="panel">
+                <h2>Live detections</h2>
+                <ul id="tracks">
+                    <li class="empty">Waiting for camera telemetry.</li>
+                </ul>
+            </article>
+            <article class="panel">
+                <h2>What was found</h2>
+                <div class="event-list" id="events">
+                    <p class="empty">No detections recorded yet.</p>
+                </div>
+                <img class="review-image" id="review-image" alt="Selected detection snapshot">
+            </article>
+        </section>
+    </main>
+    <script>
+        const text = (id, value) => document.getElementById(id).textContent = value;
+        const render = (data) => {
+            text('camera-count', data.device.camera_count);
+            text('track-count', data.tracks.length);
+            text('alert-count', data.alerts.length);
+            text('status-text', data.device.online ? 'Device online' : 'Device offline');
+            text('feed-note', data.device.online ? 'Live frames are arriving from the camera pipeline.' : 'Camera pipeline offline.');
+            document.getElementById('status-dot').style.background = data.device.online ? 'var(--green)' : 'var(--accent)';
+            document.getElementById('tracks').innerHTML = data.tracks.length ? data.tracks.map(track => `<li><span>${track.label} #${track.id}</span><span class="confidence">${Math.round(track.confidence * 100)}%</span></li>`).join('') : '<li class="empty">No active detections.</li>';
+        };
+        const renderEvents = (events) => {
+            document.getElementById('events').innerHTML = events.length ? events.map(event => `<button type="button" data-snapshot="${event.snapshot_url}"><span><strong>${event.label}</strong> found</span><span class="confidence">${new Date(event.occurred_at).toLocaleTimeString()}</span></button>`).join('') : '<p class="empty">No detections recorded yet.</p>';
+            document.querySelectorAll('[data-snapshot]').forEach(button => button.addEventListener('click', () => {
+                const image = document.getElementById('review-image');
+                image.src = button.dataset.snapshot;
+                image.style.display = 'block';
+            }));
+        };
+        const poll = () => fetch('/api/status').then(response => response.json()).then(render).catch(() => text('status-text', 'Dashboard offline'));
+        const pollEvents = () => fetch('/api/events').then(response => response.json()).then(renderEvents);
+        poll(); pollEvents(); setInterval(poll, 5000); setInterval(pollEvents, 2000);
+    </script>
+</body>
+
+</html>
