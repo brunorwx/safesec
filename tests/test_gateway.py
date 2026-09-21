@@ -4,12 +4,11 @@ import pytest
 
 from gateway.authentication import ApiKeyAuthenticator, AuditLog, RateLimiter
 from gateway.device_api import DeviceApi, OfflineQueue
-from gateway.remote_access import RemoteAccessManager
 
 
 def test_api_key_authentication_and_scope_authorization() -> None:
     authenticator = ApiKeyAuthenticator(iterations=100_000)
-    token = authenticator.issue("owner", {"device:read", "remote:connect"})
+    token = authenticator.issue("owner", {"device:read"})
 
     principal = authenticator.authenticate("owner", token)
 
@@ -32,25 +31,6 @@ def test_device_status_requires_scope() -> None:
         api.get_status(None)
 
 
-def test_remote_access_is_opt_in_and_expires() -> None:
-    authenticator = ApiKeyAuthenticator(iterations=100_000)
-    token = authenticator.issue("owner", {"remote:connect"})
-    principal = authenticator.authenticate("owner", token)
-    manager = RemoteAccessManager(authenticator)
-    now = datetime(2026, 1, 1, tzinfo=UTC)
-
-    assert principal is not None
-    with pytest.raises(PermissionError):
-        manager.create_session(principal)
-    manager.set_enabled(True)
-    session = manager.create_session(principal, lifetime=timedelta(minutes=1), now=now)
-
-    assert manager.is_valid(session.session_id, now=now + timedelta(seconds=30))
-    assert not manager.is_valid(session.session_id, now=now + timedelta(minutes=1))
-    manager.set_enabled(False)
-    assert not manager.is_valid(session.session_id, now=now)
-
-
 def test_rotation_invalidates_old_token_and_rate_limiter_bounds_requests() -> None:
     authenticator = ApiKeyAuthenticator(iterations=100_000)
     old_token = authenticator.issue("owner", {"device:read"})
@@ -65,8 +45,8 @@ def test_rotation_invalidates_old_token_and_rate_limiter_bounds_requests() -> No
     assert not limiter.allow("owner", now=now + timedelta(seconds=2))
 
     audit = AuditLog()
-    audit.record("owner", "remote.connect", success=True, occurred_at=now)
-    assert audit.events[0].action == "remote.connect"
+    audit.record("owner", "device.read", success=True, occurred_at=now)
+    assert audit.events[0].action == "device.read"
 
 
 def test_audit_log_reloads_persisted_events(tmp_path) -> None:

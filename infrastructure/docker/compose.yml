@@ -16,6 +16,8 @@ services:
       - "--dashboard"
       - "--dashboard-host"
       - "0.0.0.0"
+      - "--dashboard-token"
+      - "${SAFESEC_DASHBOARD_TOKEN:?Set SAFESEC_DASHBOARD_TOKEN before starting SafeSec}"
       - "--record"
       - "--recordings"
       - "/app/recordings"

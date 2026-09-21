@@ -29,7 +29,30 @@ uv run safesec-local --camera 0 --dashboard --record --recordings .\recordings
 
 Open [http://127.0.0.1:8765](http://127.0.0.1:8765). The dashboard shows the live feed, object-name overlays, active tracks, and a timestamped event list. Select an event to review its captured snapshot.
 
-The dashboard binds to localhost by default. Only bind to `0.0.0.0` on a trusted private network; the current dashboard is not an internet-facing authenticated service.
+The dashboard binds to localhost by default. Add `--dashboard-token <secret>` when binding beyond localhost. Browsers authenticate with username `dashboard` and that token; API clients may send the same token as a bearer token. Never expose the dashboard directly to the internet.
+
+## Authentication
+
+Authentication is local and in-memory for the running device:
+
+1. SafeSec reads `--dashboard-token`, or `SAFESEC_DASHBOARD_TOKEN` when the flag is omitted.
+2. The token is hashed with a random salt using PBKDF2-HMAC-SHA256. The plaintext token is not stored.
+3. The dashboard registers one principal named `dashboard` with the `dashboard:read` scope.
+4. Browser requests use HTTP Basic Auth with username `dashboard` and the token as the password. This protects the HTML page, MJPEG stream, event list, and review snapshots.
+5. API clients can send `Authorization: Bearer <token>` instead.
+
+```powershell
+$env:SAFESEC_DASHBOARD_TOKEN = "replace-with-a-long-random-secret"
+uv run safesec-local --camera 0 --dashboard --record
+```
+
+Or test an authenticated API request:
+
+```powershell
+curl.exe -u dashboard:replace-with-a-long-random-secret http://127.0.0.1:8765/api/status
+```
+
+Localhost runs without authentication when no token is configured. Any dashboard bind other than localhost is rejected unless a token is present. Credentials are currently process-local; restarting the service re-registers the configured token, while persistent user management and token rotation endpoints are not exposed by the dashboard yet.
 
 ## Video Replay
 
@@ -65,7 +88,7 @@ For a Linux host with a `/dev/video0` camera:
 docker compose -f infrastructure/docker/compose.yml up --build
 ```
 
-The compose setup installs the ML backend, maps the camera, exposes the dashboard on port `8765`, and keeps recordings and model weights in local named volumes.
+Set `SAFESEC_DASHBOARD_TOKEN` in the shell before starting Compose. The setup installs the ML backend, maps the camera, exposes the authenticated dashboard on port `8765`, and keeps recordings and model weights in local named volumes.
 
 ## Development
 

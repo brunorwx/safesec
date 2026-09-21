@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import threading
 from collections.abc import Sequence
 from pathlib import Path
@@ -13,6 +14,7 @@ from camera.runner import FrameSource, PipelineUpdate, run_pipeline
 from detection.inference import UltralyticsDetector
 from detection.tracking import CentroidTracker
 from detection.visualization import annotate_frame
+from gateway.authentication import ApiKeyAuthenticator
 from storage.segments import VideoSegmentRecorder
 
 logger = logging.getLogger("safesec.local")
@@ -37,6 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dashboard", action="store_true", help="serve the live browser dashboard")
     parser.add_argument("--dashboard-host", default="127.0.0.1")
     parser.add_argument("--dashboard-port", type=int, default=8765)
+    parser.add_argument(
+        "--dashboard-token",
+        default=os.getenv("SAFESEC_DASHBOARD_TOKEN"),
+        help="protect the dashboard with Basic/Bearer authentication",
+    )
     parser.add_argument("--record", action="store_true", help="save local MP4 recording segments")
     parser.add_argument("--recordings", default="recordings", help="local recording directory")
     return parser
@@ -77,6 +84,21 @@ def main(arguments: Sequence[str] | None = None) -> int:
         else None
     )
     dashboard_state = LiveDashboardState() if options.dashboard else None
+    if (
+        options.dashboard_host not in {"127.0.0.1", "localhost", "::1"}
+        and not options.dashboard_token
+    ):
+        raise ValueError(
+            "--dashboard-token is required when binding the dashboard beyond localhost"
+        )
+    dashboard_authenticator = None
+    if options.dashboard_token:
+        dashboard_authenticator = ApiKeyAuthenticator()
+        dashboard_authenticator.register(
+            "dashboard",
+            options.dashboard_token,
+            {"dashboard:read"},
+        )
     dashboard_server = None
     dashboard_thread = None
     if dashboard_state is not None:
@@ -85,6 +107,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             options.dashboard_port,
             dashboard_state.snapshot,
             live_state=dashboard_state,
+            authenticator=dashboard_authenticator,
         )
         dashboard_thread = threading.Thread(
             target=dashboard_server.serve_forever,

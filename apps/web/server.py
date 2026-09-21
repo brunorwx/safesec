@@ -1,10 +1,13 @@
 """Small local dashboard server for the operational web shell."""
 
+import base64
 import json
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+
+from gateway.authentication import ApiKeyAuthenticator
 
 from .dashboard import DashboardSnapshot
 from .live import LiveDashboardState
@@ -17,12 +20,17 @@ class DashboardServer:
         port: int,
         snapshot_provider: Callable[[], DashboardSnapshot],
         live_state: LiveDashboardState | None = None,
+        authenticator: ApiKeyAuthenticator | None = None,
+        auth_subject: str = "dashboard",
     ) -> None:
         provider = snapshot_provider
         state = live_state
+        auth = authenticator
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
+                if not self._authorized():
+                    return
                 if self.path == "/api/status":
                     self._json_response(provider().as_payload())
                     return
@@ -55,6 +63,30 @@ class DashboardServer:
                     self.wfile.write(page)
                     return
                 self.send_error(404)
+
+            def _authorized(self) -> bool:
+                if auth is None:
+                    return True
+                header = self.headers.get("Authorization", "")
+                token = ""
+                scheme, _, value = header.partition(" ")
+                if scheme.lower() == "bearer":
+                    token = value
+                elif scheme.lower() == "basic":
+                    try:
+                        credentials = base64.b64decode(value).decode("utf-8")
+                        subject, separator, password = credentials.partition(":")
+                        if separator == ":" and subject == auth_subject:
+                            token = password
+                    except (ValueError, UnicodeDecodeError):
+                        token = ""
+                principal = auth.authenticate(auth_subject, token)
+                if auth.authorize(principal, "dashboard:read"):
+                    return True
+                self.send_response(401)
+                self.send_header("WWW-Authenticate", 'Basic realm="SafeSec dashboard"')
+                self.end_headers()
+                return False
 
             def _json_response(self, payload: Any) -> None:
                 body = json.dumps(payload).encode("utf-8")

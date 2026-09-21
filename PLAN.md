@@ -34,11 +34,11 @@
 - [x] Add schedule rules and notification retry behavior
 - [x] Add alert rule and delivery tests
 
-## Phase 4: Device API and remote access
+## Phase 4: Device API and local authentication
 
 - [x] Define device identity and authenticated local API
 - [x] Add authorization and credential revocation
-- [x] Implement explicit opt-in remote sessions
+- [x] Add authenticated dashboard HTTP access
 - [x] Add audit logging, rate limiting, and key rotation
 - [x] Add durable audit storage and offline/reconnect behavior
 - [x] Add security and integration tests
@@ -47,7 +47,7 @@
 
 - [x] Define web dashboard and mobile notification read models
 - [x] Build local operational web view, live MJPEG feed, event history, and review snapshots
-- [ ] Add authenticated remote-view workflows
+- [ ] Add authenticated remote-view workflows if remote access becomes a product requirement
 - [x] Add Docker development packaging
 - [x] Add self-hosted dashboard, recording, and model volumes to Docker Compose
 - [x] Document provisioning and update requirements

@@ -30,6 +30,13 @@ class ApiKeyAuthenticator:
         if not subject or not scopes:
             raise ValueError("subject and scopes are required")
         token = secrets.token_urlsafe(32)
+        self.register(subject, token, scopes)
+        return token
+
+    def register(self, subject: str, token: str, scopes: set[str]) -> None:
+        """Register a caller-provided token without storing it in plaintext."""
+        if not subject or not token or not scopes:
+            raise ValueError("subject, token, and scopes are required")
         salt = secrets.token_bytes(16)
         digest = self._digest(token, salt)
         self._credentials[subject] = _Credential(
@@ -37,7 +44,6 @@ class ApiKeyAuthenticator:
             digest,
             Principal(subject, frozenset(scopes)),
         )
-        return token
 
     def authenticate(self, subject: str, token: str) -> Principal | None:
         credential = self._credentials.get(subject)
