@@ -1,11 +1,9 @@
 """Encoded recording segment storage."""
 
-from .recorder import SegmentMetadata, SegmentRecorder
-from .video import VideoSegmentMetadata, VideoSegmentRecorder
+from .video import RecordingCatalog, VideoSegmentMetadata, VideoSegmentRecorder
 
 __all__ = [
-    "SegmentMetadata",
-    "SegmentRecorder",
+    "RecordingCatalog",
     "VideoSegmentMetadata",
     "VideoSegmentRecorder",
 ]

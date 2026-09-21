@@ -1,6 +1,8 @@
 """Command-line entry point for local camera detection."""
 
 import argparse
+import base64
+import binascii
 import logging
 import os
 import threading
@@ -15,7 +17,9 @@ from detection.inference import UltralyticsDetector
 from detection.tracking import CentroidTracker
 from detection.visualization import annotate_frame
 from gateway.authentication import ApiKeyAuthenticator
-from storage.segments import VideoSegmentRecorder
+from storage.encryption import EncryptedFileStore
+from storage.retention import RetentionPolicy
+from storage.segments import RecordingCatalog, VideoSegmentRecorder
 
 logger = logging.getLogger("safesec.local")
 
@@ -46,6 +50,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--record", action="store_true", help="save local MP4 recording segments")
     parser.add_argument("--recordings", default="recordings", help="local recording directory")
+    parser.add_argument("--max-recordings", type=int, default=100)
+    parser.add_argument(
+        "--recording-key",
+        default=os.getenv("SAFESEC_RECORDING_KEY"),
+        help="base64-encoded 32-byte key for encrypted recordings",
+    )
     return parser
 
 
@@ -74,11 +84,22 @@ def main(arguments: Sequence[str] | None = None) -> int:
         allowed_labels=labels,
     )
     tracker = CentroidTracker()
+    recording_encryption = None
+    if options.recording_key:
+        try:
+            key = base64.b64decode(options.recording_key, validate=True)
+        except (ValueError, binascii.Error) as error:
+            raise ValueError("--recording-key must be valid base64") from error
+        recording_encryption = EncryptedFileStore(key)
+    retention = RetentionPolicy(max_segments=options.max_recordings)
+    recording_root = Path(options.recordings)
     recorder = (
         VideoSegmentRecorder(
-            Path(options.recordings),
+            recording_root,
             camera_id="video" if options.video else f"camera:{options.camera}",
             fps=options.fps,
+            encryption=recording_encryption,
+            retention=retention,
         )
         if options.record
         else None
@@ -108,6 +129,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             dashboard_state.snapshot,
             live_state=dashboard_state,
             authenticator=dashboard_authenticator,
+            recording_catalog=RecordingCatalog(recording_root, encryption=recording_encryption),
         )
         dashboard_thread = threading.Thread(
             target=dashboard_server.serve_forever,

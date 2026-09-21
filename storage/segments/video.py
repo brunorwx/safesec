@@ -9,6 +9,8 @@ from typing import Any
 from uuid import uuid4
 
 from camera.capture.models import Frame
+from storage.encryption import EncryptedFileStore
+from storage.retention import RetentionPolicy
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +22,7 @@ class VideoSegmentMetadata:
     frame_count: int
     media_path: str
     metadata_path: str
+    encrypted: bool
 
 
 class VideoSegmentRecorder:
@@ -33,6 +36,8 @@ class VideoSegmentRecorder:
         fps: float = 30.0,
         max_duration_seconds: float = 300.0,
         writer_factory: Callable[[Path, float, tuple[int, int]], Any] | None = None,
+        encryption: EncryptedFileStore | None = None,
+        retention: RetentionPolicy | None = None,
     ) -> None:
         if not camera_id:
             raise ValueError("camera_id is required")
@@ -42,6 +47,8 @@ class VideoSegmentRecorder:
         self.camera_id = camera_id
         self.fps = fps
         self.max_duration_seconds = max_duration_seconds
+        self.encryption = encryption
+        self.retention = retention
         self._writer_factory = writer_factory or self._default_writer_factory
         self._writer: Any | None = None
         self._temp_path: Path | None = None
@@ -71,7 +78,18 @@ class VideoSegmentRecorder:
         self._writer.release()
         media_path = self.root / f"{self._segment_id}.mp4"
         metadata_path = self.root / f"{self._segment_id}.json"
-        self._temp_path.replace(media_path)
+        if self.encryption is None:
+            self._temp_path.replace(media_path)
+        else:
+            encrypted_path = self.root / f".{self._segment_id}.tmp.mp4.enc"
+            self.encryption.encrypt_file(
+                self._temp_path,
+                encrypted_path,
+                associated_data=self._segment_id.encode("utf-8"),
+            )
+            self._temp_path.unlink(missing_ok=True)
+            encrypted_path.replace(self.root / f"{self._segment_id}.mp4.enc")
+            media_path = self.root / f"{self._segment_id}.mp4.enc"
         metadata = VideoSegmentMetadata(
             segment_id=self._segment_id,
             camera_id=self.camera_id,
@@ -80,11 +98,14 @@ class VideoSegmentRecorder:
             frame_count=self._frame_count,
             media_path=str(media_path),
             metadata_path=str(metadata_path),
+            encrypted=self.encryption is not None,
         )
         metadata_path.write_text(
             json.dumps(asdict(metadata), default=self._json_default, indent=2),
             encoding="utf-8",
         )
+        if self.retention is not None:
+            self.retention.apply(self.root)
         self._last_metadata = metadata
         self._writer = None
         self._temp_path = None
@@ -133,3 +154,60 @@ class VideoSegmentRecorder:
         if isinstance(value, datetime):
             return value.isoformat()
         raise TypeError(f"unsupported metadata value: {type(value)!r}")
+
+
+class RecordingCatalog:
+    """List finalized recordings and read plaintext media for local playback."""
+
+    def __init__(self, root: Path, *, encryption: EncryptedFileStore | None = None) -> None:
+        self.root = root
+        self.encryption = encryption
+
+    def list_segments(self) -> list[VideoSegmentMetadata]:
+        segments: list[VideoSegmentMetadata] = []
+        for metadata_path in sorted(self.root.glob("*.json"), reverse=True):
+            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+            segments.append(
+                VideoSegmentMetadata(
+                    segment_id=payload["segment_id"],
+                    camera_id=payload["camera_id"],
+                    started_at=datetime.fromisoformat(payload["started_at"]),
+                    ended_at=datetime.fromisoformat(payload["ended_at"]),
+                    frame_count=int(payload["frame_count"]),
+                    media_path=payload["media_path"],
+                    metadata_path=payload["metadata_path"],
+                    encrypted=bool(payload.get("encrypted", False)),
+                )
+            )
+        return segments
+
+    def list_payload(self) -> list[dict[str, object]]:
+        return [
+            {
+                "id": segment.segment_id,
+                "camera_id": segment.camera_id,
+                "started_at": segment.started_at.isoformat(),
+                "ended_at": segment.ended_at.isoformat(),
+                "frame_count": segment.frame_count,
+                "encrypted": segment.encrypted,
+                "video_url": f"/api/recordings/{segment.segment_id}/video",
+            }
+            for segment in self.list_segments()
+        ]
+
+    def read_media(self, segment_id: str) -> tuple[VideoSegmentMetadata, bytes] | None:
+        segment = next(
+            (item for item in self.list_segments() if item.segment_id == segment_id),
+            None,
+        )
+        if segment is None:
+            return None
+        payload = Path(segment.media_path).read_bytes()
+        if segment.encrypted:
+            if self.encryption is None:
+                raise PermissionError("recording encryption key is not configured")
+            payload = self.encryption.decrypt_bytes(
+                payload,
+                associated_data=segment.segment_id.encode("utf-8"),
+            )
+        return segment, payload

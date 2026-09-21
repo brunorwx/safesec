@@ -2,6 +2,7 @@ import base64
 import json
 import threading
 from datetime import UTC, datetime
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -11,6 +12,7 @@ from apps.web.dashboard import DashboardSnapshot
 from apps.web.server import DashboardServer
 from gateway.authentication import ApiKeyAuthenticator
 from gateway.device_api import DeviceStatus
+from storage.segments import RecordingCatalog
 
 
 def test_dashboard_server_serves_status_json() -> None:
@@ -50,3 +52,43 @@ def test_dashboard_server_requires_and_accepts_authentication() -> None:
     finally:
         server.close()
         thread.join(timeout=2)
+
+
+def test_dashboard_server_serves_recording_catalog_and_mp4(tmp_path: Path) -> None:
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    media_path = tmp_path / "segment-1.mp4"
+    metadata_path = tmp_path / "segment-1.json"
+    media_path.write_bytes(b"local-mp4")
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "segment_id": "segment-1",
+                "camera_id": "camera-1",
+                "started_at": now.isoformat(),
+                "ended_at": now.isoformat(),
+                "frame_count": 1,
+                "media_path": str(media_path),
+                "metadata_path": str(metadata_path),
+                "encrypted": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    catalog = RecordingCatalog(tmp_path)
+    snapshot = DashboardSnapshot(DeviceStatus("device-1", True, 1, now), (), (), now)
+    server = DashboardServer("127.0.0.1", 0, lambda: snapshot, recording_catalog=catalog)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = f"http://127.0.0.1:{server.server.server_port}"
+    try:
+        with urlopen(f"{base_url}/api/recordings") as response:
+            recordings = json.loads(response.read())
+        with urlopen(f"{base_url}/api/recordings/segment-1/video") as response:
+            media = response.read()
+            assert response.headers["Content-Type"] == "video/mp4"
+    finally:
+        server.close()
+        thread.join(timeout=2)
+
+    assert recordings[0]["id"] == "segment-1"
+    assert media == b"local-mp4"

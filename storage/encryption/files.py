@@ -21,10 +21,9 @@ class EncryptedFileStore:
         *,
         associated_data: bytes | None = None,
     ) -> None:
-        nonce = os.urandom(12)
-        encrypted = self._cipher.encrypt(nonce, source.read_bytes(), associated_data)
+        encrypted = self.encrypt_bytes(source.read_bytes(), associated_data=associated_data)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(nonce + encrypted)
+        destination.write_bytes(encrypted)
 
     def decrypt_file(
         self,
@@ -33,9 +32,15 @@ class EncryptedFileStore:
         *,
         associated_data: bytes | None = None,
     ) -> None:
-        payload = source.read_bytes()
-        if len(payload) < 13:
-            raise ValueError("encrypted file is truncated")
-        plaintext = self._cipher.decrypt(payload[:12], payload[12:], associated_data)
+        plaintext = self.decrypt_bytes(source.read_bytes(), associated_data=associated_data)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(plaintext)
+
+    def encrypt_bytes(self, plaintext: bytes, *, associated_data: bytes | None = None) -> bytes:
+        nonce = os.urandom(12)
+        return nonce + self._cipher.encrypt(nonce, plaintext, associated_data)
+
+    def decrypt_bytes(self, payload: bytes, *, associated_data: bytes | None = None) -> bytes:
+        if len(payload) < 13:
+            raise ValueError("encrypted file is truncated")
+        return self._cipher.decrypt(payload[:12], payload[12:], associated_data)

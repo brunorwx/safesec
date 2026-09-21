@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -6,47 +7,30 @@ from cryptography.exceptions import InvalidTag
 
 from storage.encryption import EncryptedFileStore
 from storage.retention import RetentionPolicy
-from storage.segments import SegmentRecorder
-
-
-def timestamp(seconds: int) -> datetime:
-    return datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=seconds)
-
-
-def test_recorder_rotates_by_duration_and_writes_metadata(tmp_path: Path) -> None:
-    recorder = SegmentRecorder(tmp_path, camera_id="cam-1", max_duration_seconds=5, max_bytes=100)
-
-    recorder.append(b"one", timestamp(0))
-    first = recorder.append(b"two", timestamp(6))
-    final = recorder.close()
-
-    assert first is not None
-    assert final is not None
-    assert Path(first.media_path).read_bytes() == b"one"
-    assert Path(final.media_path).read_bytes() == b"two"
-    assert Path(first.metadata_path).exists()
-    assert not list(tmp_path.glob(".segment-*.tmp"))
-
-
-def test_recorder_rejects_naive_timestamps(tmp_path: Path) -> None:
-    recorder = SegmentRecorder(tmp_path, camera_id="cam-1")
-
-    with pytest.raises(ValueError, match="timezone-aware"):
-        recorder.append(b"data", datetime.now())
 
 
 def test_retention_removes_oldest_segments(tmp_path: Path) -> None:
-    recorder = SegmentRecorder(tmp_path, camera_id="cam-1", max_duration_seconds=1)
-    recorder.append(b"one", timestamp(0))
-    recorder.finalize(timestamp(0))
-    recorder.append(b"two", timestamp(2))
-    recorder.finalize(timestamp(2))
-
+    for index in range(2):
+        media_path = tmp_path / f"segment-{index}.mp4"
+        metadata_path = tmp_path / f"segment-{index}.json"
+        media_path.write_bytes(f"segment-{index}".encode())
+        metadata_path.write_text(
+            json.dumps(
+                {
+                    "segment_id": f"segment-{index}",
+                    "media_path": str(media_path),
+                    "ended_at": (
+                        datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=index)
+                    ).isoformat(),
+                }
+            ),
+            encoding="utf-8",
+        )
     removed = RetentionPolicy(max_segments=1).apply(tmp_path)
 
-    assert len(removed) == 1
-    assert len(list(tmp_path.glob("*.json"))) == 1
-    assert len(list(tmp_path.glob("*.bin"))) == 1
+    assert removed == ["segment-0"]
+    assert not (tmp_path / "segment-0.mp4").exists()
+    assert (tmp_path / "segment-1.mp4").exists()
 
 
 def test_encrypted_store_round_trips_bytes(tmp_path: Path) -> None:

@@ -25,6 +25,8 @@
 - [x] Define and implement encryption boundaries
 - [x] Add recording, retention, and recovery tests
 - [x] Wire local MP4 recording into the self-hosted CLI
+- [x] Apply retention limits when MP4 segments finalize
+- [x] Add optional AES-GCM recording encryption and catalog playback
 
 ## Phase 3: Alerts
 
@@ -47,6 +49,7 @@
 
 - [x] Define web dashboard and mobile notification read models
 - [x] Build local operational web view, live MJPEG feed, event history, and review snapshots
+- [x] Add authenticated recorded-segment listing and MP4 playback
 - [ ] Add authenticated remote-view workflows if remote access becomes a product requirement
 - [x] Add Docker development packaging
 - [x] Add self-hosted dashboard, recording, and model volumes to Docker Compose

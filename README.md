@@ -29,6 +29,8 @@ uv run safesec-local --camera 0 --dashboard --record --recordings .\recordings
 
 Open [http://127.0.0.1:8765](http://127.0.0.1:8765). The dashboard shows the live feed, object-name overlays, active tracks, and a timestamped event list. Select an event to review its captured snapshot.
 
+When recording is enabled, the dashboard also lists finalized local segments and plays them in the built-in review player. Playback requests are authenticated and encrypted segments are decrypted only in memory for that response.
+
 The dashboard binds to localhost by default. Add `--dashboard-token <secret>` when binding beyond localhost. Browsers authenticate with username `dashboard` and that token; API clients may send the same token as a bearer token. Never expose the dashboard directly to the internet.
 
 ## Authentication
@@ -45,6 +47,8 @@ Authentication is local and in-memory for the running device:
 $env:SAFESEC_DASHBOARD_TOKEN = "replace-with-a-long-random-secret"
 uv run safesec-local --camera 0 --dashboard --record
 ```
+
+For encrypted local recordings, set `SAFESEC_RECORDING_KEY` as described in [.env.example](.env.example) before starting the process. Without that key, recordings are ordinary local MP4 files.
 
 Or test an authenticated API request:
 
@@ -89,6 +93,8 @@ docker compose -f infrastructure/docker/compose.yml up --build
 ```
 
 Set `SAFESEC_DASHBOARD_TOKEN` in the shell before starting Compose. The setup installs the ML backend, maps the camera, exposes the authenticated dashboard on port `8765`, and keeps recordings and model weights in local named volumes.
+
+Set `SAFESEC_RECORDING_KEY` as well to encrypt MP4 segments at rest. The dashboard decrypts segments only when an authenticated playback request is made. Generate the key with the command shown in [.env.example](.env.example).
 
 ## Development
 

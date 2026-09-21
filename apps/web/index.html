@@ -180,6 +180,39 @@
             border: 1px solid var(--line);
         }
 
+        .recording-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .recording-list button {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: #f8fbf9;
+            color: var(--ink);
+            cursor: pointer;
+            font: inherit;
+            padding: 13px 15px;
+            text-align: left;
+        }
+
+        .recording-list button:hover {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+        }
+
+        .recording-player {
+            display: none;
+            width: 100%;
+            margin-top: 16px;
+            border-radius: 6px;
+            background: #17251f;
+        }
+
         h2 {
             margin: 0 0 18px;
             font: 700 1.15rem "Trebuchet MS", sans-serif;
@@ -276,6 +309,13 @@
                 <img class="review-image" id="review-image" alt="Selected detection snapshot">
             </article>
         </section>
+        <section class="panel">
+            <h2>Recorded segments</h2>
+            <div class="recording-list" id="recordings">
+                <p class="empty">No recordings available.</p>
+            </div>
+            <video class="recording-player" id="recording-player" controls preload="metadata"></video>
+        </section>
     </main>
     <script>
         const text = (id, value) => document.getElementById(id).textContent = value;
@@ -296,9 +336,19 @@
                 image.style.display = 'block';
             }));
         };
+        const renderRecordings = (recordings) => {
+            document.getElementById('recordings').innerHTML = recordings.length ? recordings.map(recording => `<button type="button" data-video="${recording.video_url}"><span>${new Date(recording.started_at).toLocaleString()}</span><span class="confidence">${recording.encrypted ? 'Encrypted' : 'Local MP4'}</span></button>`).join('') : '<p class="empty">No recordings available.</p>';
+            document.querySelectorAll('[data-video]').forEach(button => button.addEventListener('click', () => {
+                const player = document.getElementById('recording-player');
+                player.src = button.dataset.video;
+                player.style.display = 'block';
+                player.play();
+            }));
+        };
         const poll = () => fetch('/api/status').then(response => response.json()).then(render).catch(() => text('status-text', 'Dashboard offline'));
         const pollEvents = () => fetch('/api/events').then(response => response.json()).then(renderEvents);
-        poll(); pollEvents(); setInterval(poll, 5000); setInterval(pollEvents, 2000);
+        const pollRecordings = () => fetch('/api/recordings').then(response => response.json()).then(renderRecordings);
+        poll(); pollEvents(); pollRecordings(); setInterval(poll, 5000); setInterval(pollEvents, 2000); setInterval(pollRecordings, 5000);
     </script>
 </body>
 

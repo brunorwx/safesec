@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from gateway.authentication import ApiKeyAuthenticator
+from storage.segments import RecordingCatalog
 
 from .dashboard import DashboardSnapshot
 from .live import LiveDashboardState
@@ -22,10 +23,12 @@ class DashboardServer:
         live_state: LiveDashboardState | None = None,
         authenticator: ApiKeyAuthenticator | None = None,
         auth_subject: str = "dashboard",
+        recording_catalog: RecordingCatalog | None = None,
     ) -> None:
         provider = snapshot_provider
         state = live_state
         auth = authenticator
+        recordings = recording_catalog
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
@@ -36,6 +39,24 @@ class DashboardServer:
                     return
                 if self.path == "/api/events" and state is not None:
                     self._json_response(state.events_payload())
+                    return
+                if self.path == "/api/recordings" and recordings is not None:
+                    self._json_response(recordings.list_payload())
+                    return
+                if self.path.startswith("/api/recordings/") and self.path.endswith("/video"):
+                    if recordings is None:
+                        self.send_error(404)
+                        return
+                    segment_id = self.path.split("/")[3]
+                    try:
+                        recording = recordings.read_media(segment_id)
+                    except PermissionError:
+                        self.send_error(403, "recording key is not configured")
+                        return
+                    if recording is None:
+                        self.send_error(404)
+                        return
+                    self._bytes_response(recording[1], "video/mp4")
                     return
                 if self.path.startswith("/api/events/") and self.path.endswith("/snapshot"):
                     if state is None:

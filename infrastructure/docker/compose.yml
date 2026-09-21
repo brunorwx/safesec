@@ -21,6 +21,8 @@ services:
       - "--record"
       - "--recordings"
       - "/app/recordings"
+      - "--recording-key"
+      - "${SAFESEC_RECORDING_KEY:?Set SAFESEC_RECORDING_KEY before starting SafeSec}"
       - "--weights"
       - "/app/models/yolo11n.pt"
     restart: unless-stopped
